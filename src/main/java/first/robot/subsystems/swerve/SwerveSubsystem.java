@@ -1,4 +1,4 @@
-package frc.robot.subsystems.swerve;
+package first.robot.subsystems.swerve;
 
 import org.wpilib.command2.Command;
 import org.wpilib.command2.SubsystemBase;
@@ -7,8 +7,10 @@ import org.wpilib.hardware.imu.OnboardIMU.MountOrientation;
 import org.wpilib.math.estimator.SwerveDrivePoseEstimator;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
 import org.wpilib.math.kinematics.SwerveDriveKinematics;
 import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.math.kinematics.SwerveModuleVelocity;
 import org.wpilib.smartdashboard.Field2d;
 
 /**
@@ -52,7 +54,7 @@ public class SwerveSubsystem extends SubsystemBase {
     SwerveModule backLeft;
     SwerveModule backRight;
 
-    ChassisSpeeds desiredSpeeds = new ChassisSpeeds();
+    ChassisVelocities desiredSpeeds = new ChassisVelocities();
 
     SwerveDriveKinematics kinematics;
     SwerveDrivePoseEstimator poseEstimator;
@@ -108,7 +110,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 .invertAngleMotor(true)
                 .x(-0.5)
                 .y(0.5);
-        
+
         SwerveModuleConfig backRightConfig = new SwerveModuleConfig()
                 .driveMotorID(6)
                 .angleMotorID(5)
@@ -127,10 +129,6 @@ public class SwerveSubsystem extends SubsystemBase {
                 .x(0.5)
                 .y(-0.5);
 
-        
-
-
-
         frontLeft = new SwerveModule("Front Left", frontLeftConfig);
         frontRight = new SwerveModule("Front Right", frontRightConfig);
         backLeft = new SwerveModule("Back Left", backLeftConfig);
@@ -146,16 +144,16 @@ public class SwerveSubsystem extends SubsystemBase {
                 new Pose2d()); // x,y,heading in radians; Vision measurement std dev, higher=less weight
     }
 
-    public void setDesiredSpeeds(ChassisSpeeds speeds) {
+    public void setDesiredSpeeds(ChassisVelocities speeds) {
         this.desiredSpeeds = speeds;
     }
 
     public void setDesiredSpeeds(double vx, double vy, double omega) {
-        this.desiredSpeeds = new ChassisSpeeds(vx, vy, omega);
+        this.desiredSpeeds = new ChassisVelocities(vx, vy, omega);
     }
 
     public void setDesiredSpeedsFieldOriented(double vx, double vy, double omega, double robotAngle) {
-        this.desiredSpeeds = new ChassisSpeeds(vx, vy, omega).toRobotRelative(Rotation2d.fromDegrees(robotAngle));
+        this.desiredSpeeds = new ChassisVelocities(vx, vy, omega).toRobotRelative(Rotation2d.fromDegrees(robotAngle));
     }
 
     public Rotation2d getYaw() {
@@ -173,12 +171,12 @@ public class SwerveSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(this.desiredSpeeds);
+        SwerveModuleVelocity[] moduleStates = kinematics.toSwerveModuleVelocities(this.desiredSpeeds);
 
-        frontLeft.setDesiredState(moduleStates[0]);
-        frontRight.setDesiredState(moduleStates[1]);
-        backLeft.setDesiredState(moduleStates[2]);
-        backRight.setDesiredState(moduleStates[3]);
+        frontLeft.setDesiredVelocity(moduleStates[0]);
+        frontRight.setDesiredVelocity(moduleStates[1]);
+        backLeft.setDesiredVelocity(moduleStates[2]);
+        backRight.setDesiredVelocity(moduleStates[3]);
     }
 
     public Pose2d getPose() {
