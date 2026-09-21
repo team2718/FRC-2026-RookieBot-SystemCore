@@ -5,15 +5,15 @@ import org.wpilib.command2.CommandScheduler;
 import org.wpilib.command2.Commands;
 import org.wpilib.command2.button.RobotModeTriggers;
 import org.wpilib.driverstation.Gamepad;
-import org.wpilib.epilogue.Epilogue;
 import org.wpilib.epilogue.Logged;
 import org.wpilib.framework.TimedRobot;
+import org.wpilib.hardware.bus.CANPort;
 import org.wpilib.hardware.power.PowerDistribution;
 import org.wpilib.math.kinematics.SwerveModulePosition;
-import org.wpilib.smartdashboard.SendableChooser;
-import org.wpilib.smartdashboard.SmartDashboard;
 import org.wpilib.system.DataLogManager;
 import org.wpilib.system.Timer;
+import org.wpilib.telemetry.Telemetry;
+import org.wpilib.tunable.Selectable;
 
 import first.robot.subsystems.swerve.SwerveSubsystem;
 
@@ -24,10 +24,9 @@ import first.robot.subsystems.swerve.SwerveSubsystem;
 // - Everything else moved to first.robot package
 // - XboxController replaced with the Gamepad class
 
-@Logged(name = "Robot")
 public class Robot extends TimedRobot {
 
-    PowerDistribution pdh = new PowerDistribution(0);
+    // PowerDistribution pdh = new PowerDistribution(CANPort.CAN_S0);
 
     // 2027: XboxController (and all other bespoke controller classes) have been
     // replaced with the Gamepad class
@@ -38,7 +37,7 @@ public class Robot extends TimedRobot {
     private final Timer matchTimer = new Timer();
 
     private Command selectedAuto;
-    private final SendableChooser<String> autoChooser = new SendableChooser<>();
+    private final Selectable<String> autoChooser = new Selectable<>();
 
     enum AutoMode {
         MoveAuto, StillAuto
@@ -49,11 +48,11 @@ public class Robot extends TimedRobot {
 
         // Initialize data logging.
         DataLogManager.start();
-        Epilogue.bind(this);
+        // Epilogue.bind(this);
 
         // Add Autos to chooser
-        autoChooser.setDefaultOption("Move Auto", AutoMode.MoveAuto.name());
-        autoChooser.addOption("Still Auto", AutoMode.StillAuto.name());
+        autoChooser.addDefault("Move Auto", AutoMode.MoveAuto.name());
+        autoChooser.add("Still Auto", AutoMode.StillAuto.name());
 
         // Setup Timer
         matchTimer.reset();
@@ -86,12 +85,12 @@ public class Robot extends TimedRobot {
         // Run the command scheduler.
         CommandScheduler.getInstance().run();
 
-        //// SmartDashboard ////
+        //// Telemetry ////
         SwerveModulePosition[] swerveAngles = swerveSubsystem.getModulePositions();
-        SmartDashboard.putString("Front Left Angle", swerveAngles[0].angle.toString());
-        SmartDashboard.putString("Front Right Angle", swerveAngles[1].angle.toString());
-        SmartDashboard.putString("Back Left Angle", swerveAngles[2].angle.toString());
-        SmartDashboard.putString("Back Right Angle", swerveAngles[3].angle.toString());
+        Telemetry.log("Front Left Angle", swerveAngles[0].angle.toString());
+        Telemetry.log("Front Right Angle", swerveAngles[1].angle.toString());
+        Telemetry.log("Back Left Angle", swerveAngles[2].angle.toString());
+        Telemetry.log("Back Right Angle", swerveAngles[3].angle.toString());
 
         //// Always run these
 
@@ -99,19 +98,19 @@ public class Robot extends TimedRobot {
             matchTimer.stop();
         }
 
-        SmartDashboard.putNumber("PDH Total Current", pdh.getTotalCurrent());
+        // Telemetry.log("PDH Total Current", pdh.getTotalCurrent());
 
         if (isAutonomous()) {
-            SmartDashboard.putNumber("Match Time", (20) - matchTimer.get());
+            Telemetry.log("Match Time", (20) - matchTimer.get());
         }
 
         if (isTeleop()) {
-            SmartDashboard.putNumber("Match Time", (140 + 20) - matchTimer.get());
+            Telemetry.log("Match Time", (140 + 20) - matchTimer.get());
         }
 
         // Swerve driver control
-        swerveSubsystem.setDesiredSpeeds(driverController.getLeftY(), driverController.getLeftX(),
-                2.0 * driverController.getRightX());
+        swerveSubsystem.setDesiredSpeeds(-driverController.getLeftY(), -driverController.getLeftX(),
+                -2.0 * driverController.getRightX());
     }
 
     @Override

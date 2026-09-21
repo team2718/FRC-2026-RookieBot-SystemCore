@@ -44,7 +44,7 @@ import org.wpilib.smartdashboard.Field2d;
  * <li>SwerveModuleConfig: Configuration for each swerve module.</li>
  * <li>SwerveDriveKinematics: Handles kinematics calculations for swerve
  * drive.</li>
- * <li>ChassisSpeeds: Represents the desired speeds for the robot chassis.</li>
+ * <li>ChassisVelocities: Represents the desired speeds for the robot chassis.</li>
  * </ul>
  */
 public class SwerveSubsystem extends SubsystemBase {
@@ -97,7 +97,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 .driveMotorID(2)
                 .angleMotorID(1)
                 .absoluteEncoderPort(3)
-                .angleOffset(0)
+                .angleOffset(253)
                 .invertAngleMotor(true)
                 .x(0.5)
                 .y(0.5);
@@ -106,7 +106,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 .driveMotorID(4)
                 .angleMotorID(3)
                 .absoluteEncoderPort(2)
-                .angleOffset(0)
+                .angleOffset(338)
                 .invertAngleMotor(true)
                 .x(-0.5)
                 .y(0.5);
@@ -115,7 +115,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 .driveMotorID(6)
                 .angleMotorID(5)
                 .absoluteEncoderPort(1)
-                .angleOffset(0)
+                .angleOffset(123)
                 .invertAngleMotor(true)
                 .x(-0.5)
                 .y(-0.5);
@@ -124,7 +124,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 .driveMotorID(8)
                 .angleMotorID(7)
                 .absoluteEncoderPort(0)
-                .angleOffset(0)
+                .angleOffset(242)
                 .invertAngleMotor(true)
                 .x(0.5)
                 .y(-0.5);

@@ -4,6 +4,7 @@ import static org.wpilib.units.Units.Inches;
 import static org.wpilib.units.Units.Meters;
 import static org.wpilib.units.Units.RotationsPerSecond;
 
+import org.wpilib.hardware.bus.CANPort;
 import org.wpilib.hardware.discrete.AnalogInput;
 import org.wpilib.hardware.rotation.DutyCycleEncoder;
 import org.wpilib.math.controller.PIDController;
@@ -11,21 +12,16 @@ import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.geometry.Translation2d;
 import org.wpilib.math.kinematics.SwerveModulePosition;
 import org.wpilib.math.kinematics.SwerveModuleVelocity;
-import org.wpilib.smartdashboard.SmartDashboard;
 import org.wpilib.system.RobotController;
+import org.wpilib.telemetry.Telemetry;
 
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.revrobotics.PersistMode;
-import com.revrobotics.ResetMode;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.config.LimitSwitchConfig;
-import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 /**
  * Represents a single module in a swerve drive system, responsible for
@@ -81,7 +77,7 @@ public class SwerveModule {
     private static final double DRIVE_CONVERSION_FACTOR = 8.0;
     private final SwerveModuleConfig config;
     private final TalonFX driveMotor;
-    private final SparkMax angleMotor;
+    private final TalonFX angleMotor;
     private final AnalogInput absoluteEncoder;
     final Translation2d location;
     private final String localName;
@@ -109,7 +105,7 @@ public class SwerveModule {
      */
     public SwerveModule(String localName, SwerveModuleConfig config) {
         // Drive Motor
-        this.driveMotor = new TalonFX(config.driveMotorID, CANBus.systemcore(0));
+        this.driveMotor = new TalonFX(config.driveMotorID, new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration driveMotorConfiguration = new TalonFXConfiguration();
         driveMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
         driveMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -118,15 +114,21 @@ public class SwerveModule {
         this.driveMotor.getConfigurator().apply(driveMotorConfiguration);
 
         // Angle Motor
-        this.angleMotor = new SparkMax(0, config.angleMotorID, MotorType.kBrushless);
-        SparkMaxConfig angleMotorConfig = new SparkMaxConfig();
-        angleMotorConfig.limitSwitch.forwardLimitSwitchTriggerBehavior(LimitSwitchConfig.Behavior.kKeepMovingMotor);
-        angleMotorConfig.limitSwitch.reverseLimitSwitchTriggerBehavior(LimitSwitchConfig.Behavior.kKeepMovingMotor);
-        angleMotorConfig.smartCurrentLimit(20);
-        angleMotorConfig.inverted(config.invertAngleMotor);
-        angleMotorConfig.idleMode(IdleMode.kBrake);
-        angleMotorConfig.closedLoopRampRate(0.3);
-        this.angleMotor.configure(angleMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        this.angleMotor = new TalonFX(config.angleMotorID, new CANBus(CANPort.CAN_S0));
+        TalonFXConfiguration angleMotorConfiguration = new TalonFXConfiguration();
+        angleMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 20;
+        angleMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        angleMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.3;
+        angleMotorConfiguration.MotorOutput.Inverted = config.invertAngleMotor ? InvertedValue.CounterClockwise_Positive : InvertedValue.Clockwise_Positive;
+        this.angleMotor.getConfigurator().apply(angleMotorConfiguration);
+
+        // this.angleMotor = new SparkMax(0, config.angleMotorID, MotorType.kBrushless);
+        // SparkMaxConfig angleMotorConfig = new SparkMaxConfig();
+        // angleMotorConfig.smartCurrentLimit(20);
+        // angleMotorConfig.inverted(config.invertAngleMotor);
+        // angleMotorConfig.idleMode(IdleMode.kBrake);
+        // angleMotorConfig.closedLoopRampRate(0.3);
+        // this.angleMotor.configure(angleMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         this.absoluteEncoder = new AnalogInput(config.absoluteEncoderPort);
         this.config = config;
@@ -155,7 +157,7 @@ public class SwerveModule {
             desiredModuleState.velocity *= desiredModuleState.angle.minus(getModuleRotation()).getCos();
         }
 
-        SmartDashboard.putNumber(localName + "/speed_output",
+        Telemetry.log(localName + "/speed_output",
                 desiredModuleState.velocity / (2 * Math.PI * WHEEL_RADIUS_METERS) * DRIVE_CONVERSION_FACTOR);
 
         driveMotor.setControl(
@@ -166,12 +168,12 @@ public class SwerveModule {
                 angleController.calculate(getAbsolutePositionDegrees(),
                         (desiredModuleState.angle.getDegrees() + 360) % 360.0));
 
-        SmartDashboard.putNumber(localName + "/angle_raw", getRawAbsolutePositionsDegrees());
-        SmartDashboard.putNumber(localName + "/angle", getAbsolutePositionDegrees());
-        SmartDashboard.putNumber(localName + "/angle_setpoint", (desiredModuleState.angle.getDegrees() + 360) % 360.0);
+        Telemetry.log(localName + "/angle_raw", getRawAbsolutePositionsDegrees());
+        Telemetry.log(localName + "/angle", getAbsolutePositionDegrees());
+        Telemetry.log(localName + "/angle_setpoint", (desiredModuleState.angle.getDegrees() + 360) % 360.0);
 
-        SmartDashboard.putNumber(localName + "/speed", driveMotor.getVelocity().getValue().in(RotationsPerSecond));
-        SmartDashboard.putNumber(localName + "/speed_setpoint", desiredModuleState.velocity);
+        Telemetry.log(localName + "/speed", driveMotor.getVelocity().getValue().in(RotationsPerSecond));
+        Telemetry.log(localName + "/speed_setpoint", desiredModuleState.velocity);
     }
 
     /**
