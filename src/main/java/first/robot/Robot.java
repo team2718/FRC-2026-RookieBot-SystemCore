@@ -15,6 +15,10 @@ import org.wpilib.system.Timer;
 import org.wpilib.telemetry.Telemetry;
 import org.wpilib.tunable.Selectable;
 
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+
 import first.robot.subsystems.swerve.SwerveSubsystem;
 
 // 2027 example: https://github.com/wpilibsuite/allwpilib/tree/v2027.0.0-alpha-6/wpilibjExamples/src/main/java/org/wpilib/examples/rapidreactcommandbot
@@ -33,11 +37,14 @@ public class Robot extends TimedRobot {
     Gamepad driverController = new Gamepad(0);
 
     SwerveSubsystem swerveSubsystem = new SwerveSubsystem();
+    TalonFX shooterMotor, intakeMotor, portalMotor;
 
     private final Timer matchTimer = new Timer();
 
     private Command selectedAuto;
     private final Selectable<String> autoChooser = new Selectable<>();
+
+    private final double TRIGGER_EPSILON = 0.2;
 
     enum AutoMode {
         MoveAuto, StillAuto
@@ -53,6 +60,9 @@ public class Robot extends TimedRobot {
         // Add Autos to chooser
         autoChooser.addDefault("Move Auto", AutoMode.MoveAuto.name());
         autoChooser.add("Still Auto", AutoMode.StillAuto.name());
+
+        // Setup mah motors
+        configureMotors();
 
         // Setup Timer
         matchTimer.reset();
@@ -78,6 +88,35 @@ public class Robot extends TimedRobot {
 
     public void configureBindings() {
         // Configure your button bindings here
+        // Haha who needs commands and bindings when you can just
+        // use if-elses? T-T
+    }
+
+    private void configureMotors() {
+        // I don't actually know what these values should be
+        //  I just copied them from SwerveModule.java lol
+
+        // Setup configs for shooterMotor, intakeMotor, and portalMotor
+        TalonFXConfiguration shooterMotorConfiguration = new TalonFXConfiguration();
+        shooterMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
+        shooterMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        shooterMotorConfiguration.Slot0.kV = 0.12;
+        shooterMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
+        shooterMotor.getConfigurator().apply(shooterMotorConfiguration);
+
+        TalonFXConfiguration intakeMotorConfiguration = new TalonFXConfiguration();
+        intakeMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
+        intakeMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        intakeMotorConfiguration.Slot0.kV = 0.12;
+        intakeMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
+        intakeMotor.getConfigurator().apply(intakeMotorConfiguration);
+
+        TalonFXConfiguration portalMotorConfiguration = new TalonFXConfiguration();
+        portalMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
+        portalMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        portalMotorConfiguration.Slot0.kV = 0.12;
+        portalMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
+        portalMotor.getConfigurator().apply(portalMotorConfiguration);
     }
 
     @Override
@@ -139,6 +178,22 @@ public class Robot extends TimedRobot {
         // this line or comment it out.
         if (selectedAuto != null) {
             selectedAuto.cancel();
+        }
+    }
+
+    // TELEOP
+    // This seemed to be better than using an if-else
+    // in robotPeriodic()?
+    @Override
+    public void teleopPeriodic() {
+        // Shoot
+        if (driverController.getRightTrigger() > TRIGGER_EPSILON) {
+
+        }
+        
+        // Intake
+        if (driverController.getLeftTrigger() > TRIGGER_EPSILON) {
+            
         }
     }
 
