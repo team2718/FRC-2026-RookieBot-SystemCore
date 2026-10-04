@@ -67,7 +67,8 @@ public class Robot extends TimedRobot {
 
 
     enum AutoMode {
-        MoveAuto, StillAuto
+        // MoveAuto, StillAuto
+        PreloadAuto, DoNothingAuto
     }
 
     public Robot() {
@@ -78,8 +79,10 @@ public class Robot extends TimedRobot {
         // Epilogue.bind(this);
 
         // Add Autos to chooser
-        autoChooser.addDefault("Move Auto", AutoMode.MoveAuto.name());
-        autoChooser.add("Still Auto", AutoMode.StillAuto.name());
+        //autoChooser.addDefault("Move Auto", AutoMode.MoveAuto.name());
+        //autoChooser.add("Still Auto", AutoMode.StillAuto.name());
+        autoChooser.addDefault("Preload Auto", AutoMode.PreloadAuto.name());
+        autoChooser.add("Do Nothing Auto", AutoMode.DoNothingAuto.name());
 
         // Setup mah motors
         configureMotors();
@@ -181,6 +184,7 @@ public class Robot extends TimedRobot {
 
     @Override
     public void autonomousInit() {
+        /*
         switch (autoChooser.getSelected()) {
             case "Move Auto":
                 selectedAuto = Commands.none();
@@ -194,6 +198,29 @@ public class Robot extends TimedRobot {
 
         if (selectedAuto != null) {
             CommandScheduler.getInstance().schedule(selectedAuto);
+        }
+        */
+
+        // Auto to score proload
+        if (autoChooser.getSelected() == "Preload Auto") {
+            // This should probably be a function but whatever
+            double hubDistMeters = Units.feetToMeters(4.0);
+            double shooterRPM = ShooterTree.getShooterRPM(hubDistMeters);
+            AngularVelocity shooterVel = RPM.of(shooterRPM);
+            
+            shooterMotor.setControl(new VelocityVoltage(shooterVel));
+            portalMotor.setControl(runPortal);
+            intakeMotor.setControl(runPortal);
+        } 
+    }
+
+    @Override
+    public void autonomousPeriodic() {
+        // Stop shooting after like, 4 seconds
+        if (autoChooser.getSelected() == "Preload Auto" && matchTimer.get() > 4) {
+            shooterMotor.setControl(stopRequest);
+            portalMotor.setControl(stopRequest);
+            intakeMotor.setControl(stopRequest);
         }
     }
 
