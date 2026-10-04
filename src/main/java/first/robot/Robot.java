@@ -20,7 +20,7 @@ import org.wpilib.tunable.Selectable;
 import org.wpilib.units.measure.AngularVelocity;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
-
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -101,10 +101,12 @@ public class Robot extends TimedRobot {
     }
 
     private void configureMotors() {
-        // I don't actually know what these values should be
+        // TODO: Actually configure motors and IDs!!!
+        // I don't know what ANY of these values should really be
         //  I just copied them from SwerveModule.java lol
 
         // Setup configs for shooterMotor, intakeMotor, and portalMotor
+        shooterMotor = new TalonFX(9,  new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration shooterMotorConfiguration = new TalonFXConfiguration();
         shooterMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
         shooterMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
@@ -112,6 +114,7 @@ public class Robot extends TimedRobot {
         shooterMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
         shooterMotor.getConfigurator().apply(shooterMotorConfiguration);
 
+        intakeMotor = new TalonFX(10,  new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration intakeMotorConfiguration = new TalonFXConfiguration();
         intakeMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
         intakeMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
@@ -119,6 +122,7 @@ public class Robot extends TimedRobot {
         intakeMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
         intakeMotor.getConfigurator().apply(intakeMotorConfiguration);
 
+        portalMotor = new TalonFX(11,  new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration portalMotorConfiguration = new TalonFXConfiguration();
         portalMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
         portalMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
