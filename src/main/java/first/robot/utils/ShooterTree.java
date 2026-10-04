@@ -1,6 +1,7 @@
 package first.robot.utils;
 
 import org.wpilib.math.interpolation.InterpolatingDoubleTreeMap;
+import org.wpilib.math.util.Units;
 
 /* Holds a table of distances and shooter RPMs,
    allowing for quite, measured motor speeds
@@ -13,6 +14,8 @@ public class ShooterTree {
     // to be tuned and calibrated properly
     private static final double[][] DISTANCE_RPM_TABLE = new double[][] {
         // Ft, RPM
+        // This is intended to use Motor RPMs; should it be desired
+        // flywheel RPM instead??
         {3.0, 2170.0},
         {5.0, 2630.0},
         {7.0, 3035.0},
@@ -27,7 +30,7 @@ public class ShooterTree {
     private static final InterpolatingDoubleTreeMap rpmMap = new InterpolatingDoubleTreeMap();
     static {
         for (double[] entry : DISTANCE_RPM_TABLE) {
-            rpmMap.put(entry[0], entry[1]);
+            rpmMap.put(Units.feetToMeters(entry[0]), entry[1]);
         }
     }
     

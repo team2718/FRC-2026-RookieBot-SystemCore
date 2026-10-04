@@ -10,16 +10,23 @@ import org.wpilib.framework.TimedRobot;
 import org.wpilib.hardware.bus.CANPort;
 import org.wpilib.hardware.power.PowerDistribution;
 import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.math.util.Units;
+import org.wpilib.units.measure.AngularVelocity;
+import static org.wpilib.units.Units.*;
 import org.wpilib.system.DataLogManager;
 import org.wpilib.system.Timer;
 import org.wpilib.telemetry.Telemetry;
 import org.wpilib.tunable.Selectable;
+import org.wpilib.units.measure.AngularVelocity;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.NeutralOut;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import first.robot.subsystems.swerve.SwerveSubsystem;
+import first.robot.utils.ShooterTree;
 
 // 2027 example: https://github.com/wpilibsuite/allwpilib/tree/v2027.0.0-alpha-6/wpilibjExamples/src/main/java/org/wpilib/examples/rapidreactcommandbot
 
@@ -45,6 +52,7 @@ public class Robot extends TimedRobot {
     private final Selectable<String> autoChooser = new Selectable<>();
 
     private final double TRIGGER_EPSILON = 0.2;
+    private final NeutralOut stopRequest = new NeutralOut();
 
     enum AutoMode {
         MoveAuto, StillAuto
@@ -188,12 +196,23 @@ public class Robot extends TimedRobot {
     public void teleopPeriodic() {
         // Shoot
         if (driverController.getRightTrigger() > TRIGGER_EPSILON) {
+            // Find the optimal speed and run the shooter motor
+            double hubDistMeters = Units.feetToMeters(4.0); // Arbitrary value assuming we're right against the hub;
+            // Maybe one day we'll get vision :')
+            // (note; measurements yielded 48.765; rounding will hopefully be fine?)
+            double shooterRPM = ShooterTree.getShooterRPM(hubDistMeters);
+            AngularVelocity shooterVel = RPM.of(shooterRPM);
+            shooterMotor.setControl(new VelocityVoltage(shooterVel));
 
+            // TODO: Run the portal and intake motors to feed balls
+
+        } else {
+            shooterMotor.setControl(stopRequest);
         }
         
         // Intake
         if (driverController.getLeftTrigger() > TRIGGER_EPSILON) {
-            
+            // Needs to run intakeMotor and (reversed) portalMotor
         }
     }
 
