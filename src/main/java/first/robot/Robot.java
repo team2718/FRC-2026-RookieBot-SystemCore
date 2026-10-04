@@ -19,10 +19,12 @@ import org.wpilib.telemetry.Telemetry;
 import org.wpilib.tunable.Selectable;
 import org.wpilib.units.measure.AngularVelocity;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import first.robot.subsystems.swerve.SwerveSubsystem;
@@ -52,7 +54,17 @@ public class Robot extends TimedRobot {
     private final Selectable<String> autoChooser = new Selectable<>();
 
     private final double TRIGGER_EPSILON = 0.2;
+
+    // Motor spinny speed requests
     private final NeutralOut stopRequest = new NeutralOut();
+    // Idk if it should be 8.5V, that's what Google suggested
+    private final VoltageOut runIntake = new VoltageOut(8.5);
+    private final VoltageOut runOuttake = new VoltageOut(-8.5);
+    // Aaand some weird inversion stuff for the intake and portal
+    private final VoltageOut portalIntake = runOuttake;
+    private final VoltageOut portalOuttake = runIntake;
+    private final VoltageOut runPortal = new VoltageOut(5);
+
 
     enum AutoMode {
         MoveAuto, StillAuto
@@ -118,6 +130,8 @@ public class Robot extends TimedRobot {
         TalonFXConfiguration intakeMotorConfiguration = new TalonFXConfiguration();
         intakeMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
         intakeMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        // I think the below line is necessary cause of the intake motor positioning
+        intakeMotorConfiguration.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         intakeMotorConfiguration.Slot0.kV = 0.12;
         intakeMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
         intakeMotor.getConfigurator().apply(intakeMotorConfiguration);
@@ -125,7 +139,8 @@ public class Robot extends TimedRobot {
         portalMotor = new TalonFX(11,  new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration portalMotorConfiguration = new TalonFXConfiguration();
         portalMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
-        portalMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        portalMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        intakeMotorConfiguration.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         portalMotorConfiguration.Slot0.kV = 0.12;
         portalMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
         portalMotor.getConfigurator().apply(portalMotorConfiguration);
@@ -194,8 +209,7 @@ public class Robot extends TimedRobot {
     }
 
     // TELEOP
-    // This seemed to be better than using an if-else
-    // in robotPeriodic()?
+    // This seemed to be better than using an if statement in robotPeriodic()?
     @Override
     public void teleopPeriodic() {
         // Shoot
@@ -208,16 +222,28 @@ public class Robot extends TimedRobot {
             AngularVelocity shooterVel = RPM.of(shooterRPM);
             shooterMotor.setControl(new VelocityVoltage(shooterVel));
 
-            // TODO: Run the portal and intake motors to feed balls
+            // Run the portal and intake motors to feed balls
+            // (do we need to have a delay before this?)
+            portalMotor.setControl(runPortal);
+            intakeMotor.setControl(runPortal);
 
         } else {
             shooterMotor.setControl(stopRequest);
-        }
-        
-        // Intake
-        if (driverController.getLeftTrigger() > TRIGGER_EPSILON) {
-            // Needs to run intakeMotor and (reversed) portalMotor
-        }
+            
+            // Intake / Outtake
+            if (driverController.getLeftTrigger() > TRIGGER_EPSILON) {
+                // Needs to run intakeMotor and (reversed) portalMotor
+                intakeMotor.setControl(runIntake);
+                portalMotor.setControl(portalIntake);
+            } else if (driverController.getLeftBumperButtonPressed()) {
+                // Run both motors the opposite way to unjam
+                intakeMotor.setControl(runOuttake);
+                portalMotor.setControl(portalOuttake);
+            } else {
+                intakeMotor.setControl(stopRequest);
+                portalMotor.setControl(stopRequest);
+            }
+        } 
     }
 
     @Override
