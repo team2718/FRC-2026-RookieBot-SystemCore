@@ -58,12 +58,15 @@ public class Robot extends TimedRobot {
     // Motor spinny speed requests
     private final NeutralOut stopRequest = new NeutralOut();
     // Idk if it should be 8.5V, that's what Google suggested
-    private final VoltageOut runIntake = new VoltageOut(8.5);
-    private final VoltageOut runOuttake = new VoltageOut(-8.5);
+    private final VoltageOut runIntake = new VoltageOut(4);
+    private final VoltageOut runOuttake = new VoltageOut(-4);
     // Aaand some weird inversion stuff for the intake and portal
     private final VoltageOut portalIntake = runOuttake;
     private final VoltageOut portalOuttake = runIntake;
-    private final VoltageOut runPortal = new VoltageOut(5);
+    private final VoltageOut runPortal = new VoltageOut(-4);
+
+    private boolean shooterPressedFlag = false;
+    private int timeStartedShooting = 0;
 
 
     enum AutoMode {
@@ -123,10 +126,11 @@ public class Robot extends TimedRobot {
         // Setup configs for shooterMotor, intakeMotor, and portalMotor
         shooterMotor = new TalonFX(9,  new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration shooterMotorConfiguration = new TalonFXConfiguration();
-        shooterMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
+        shooterMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 50;
         shooterMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         shooterMotorConfiguration.Slot0.kV = 0.12;
-        shooterMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
+        shooterMotorConfiguration.OpenLoopRamps.VoltageOpenLoopRampPeriod = 0.2;
+        //shooterMotorConfiguration.OpenLoopRamps.VoltageOpenLoopRampPeriod = 1.2;
         shooterMotor.getConfigurator().apply(shooterMotorConfiguration);
 
         intakeMotor = new TalonFX(10,  new CANBus(CANPort.CAN_S0));
@@ -136,16 +140,16 @@ public class Robot extends TimedRobot {
         // I think the below line is necessary cause of the intake motor positioning
         intakeMotorConfiguration.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         intakeMotorConfiguration.Slot0.kV = 0.12;
-        intakeMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
+        intakeMotorConfiguration.OpenLoopRamps.VoltageOpenLoopRampPeriod = 0.6;
         intakeMotor.getConfigurator().apply(intakeMotorConfiguration);
 
         portalMotor = new TalonFX(11,  new CANBus(CANPort.CAN_S0));
         TalonFXConfiguration portalMotorConfiguration = new TalonFXConfiguration();
         portalMotorConfiguration.CurrentLimits.SupplyCurrentLimit = 40;
         portalMotorConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        intakeMotorConfiguration.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        // portalMotorConfiguration.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         portalMotorConfiguration.Slot0.kV = 0.12;
-        portalMotorConfiguration.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.6;
+        portalMotorConfiguration.OpenLoopRamps.VoltageOpenLoopRampPeriod = 0.6;
         portalMotor.getConfigurator().apply(portalMotorConfiguration);
     }
 
@@ -210,7 +214,7 @@ public class Robot extends TimedRobot {
             
             shooterMotor.setControl(new VelocityVoltage(shooterVel));
             portalMotor.setControl(runPortal);
-            intakeMotor.setControl(runPortal);
+            intakeMotor.setControl(runIntake);
         } 
     }
 
@@ -241,36 +245,52 @@ public class Robot extends TimedRobot {
     public void teleopPeriodic() {
         // Shoot
         if (driverController.getRightTrigger() > TRIGGER_EPSILON) {
-            // Find the optimal speed and run the shooter motor
-            double hubDistMeters = Units.feetToMeters(4.0); // Arbitrary value assuming we're right against the hub;
-            // Maybe one day we'll get vision :')
-            // (note; measurements yielded 48.765; rounding will hopefully be fine?)
-            double shooterRPM = ShooterTree.getShooterRPM(hubDistMeters);
-            AngularVelocity shooterVel = RPM.of(shooterRPM);
-            shooterMotor.setControl(new VelocityVoltage(shooterVel));
+
+            // Start the timer for shooting if it hasn't been started yet
+            // We want to let the shooter spin up for a bit before we start feeding balls into it
+            if (!shooterPressedFlag) {
+                timeStartedShooting = (int) matchTimer.get();
+                shooterPressedFlag = true;
+                shooterMotor.setControl(new VelocityVoltage(RPM.of(4500)));
+            }
+
+            // Await for 
+
+            // // Find the optimal speed and run the shooter motor
+            // double hubDistMeters = Units.feetToMeters(4.0); // Arbitrary value assuming we're right against the hub;
+            // // Maybe one day we'll get vision :')
+            // // (note; measurements yielded 48.765; rounding will hopefully be fine?)
+            // double shooterRPM = ShooterTree.getShooterRPM(hubDistMeters);
+            // AngularVelocity shooterVel = RPM.of(shooterRPM);
+            // shooterMotor.setControl(new VelocityVoltage(shooterVel));
 
             // Run the portal and intake motors to feed balls
             // (do we need to have a delay before this?)
-            portalMotor.setControl(runPortal);
-            intakeMotor.setControl(runPortal);
+            if (matchTimer.get() - timeStartedShooting > 1.5) {
+                portalMotor.setControl(runPortal);
+                intakeMotor.setControl(runIntake);
+            }
 
         } else {
             shooterMotor.setControl(stopRequest);
+
+            shooterPressedFlag = false;
             
             // Intake / Outtake
             if (driverController.getLeftTrigger() > TRIGGER_EPSILON) {
                 // Needs to run intakeMotor and (reversed) portalMotor
                 intakeMotor.setControl(runIntake);
-                portalMotor.setControl(portalIntake);
+                portalMotor.setControl(runIntake);
+                //portalMotor.setControl(portalIntake);
             } else if (driverController.getLeftBumperButtonPressed()) {
                 // Run both motors the opposite way to unjam
                 intakeMotor.setControl(runOuttake);
-                portalMotor.setControl(portalOuttake);
+                portalMotor.setControl(runOuttake);
             } else {
                 intakeMotor.setControl(stopRequest);
                 portalMotor.setControl(stopRequest);
             }
-        } 
+        }
     }
 
     @Override
